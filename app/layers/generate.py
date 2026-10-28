@@ -14,7 +14,18 @@ from app.models import SOURCE_LABEL, Claim, Document, Event, Node, Query, Relati
 
 BANNED = r"利好|利空|必涨|必跌|建议买入|建议卖出|建议持有|目标价|抄底|满仓"
 DISCLAIMER = "以上为公开信息整理，不构成投资建议。"
+COMPLIANCE_NOTICE = ("关于是否买入，建议你结合自身财务状况和风险承受能力，理性判断。"
+                     "EventLens 仅提供公开事实与证据链供你参考，不代你做买卖决定，也无法给出目标价或保证收益。"
+                     "下面先梳理相关事件的事实与来源。")
 EXPAND = {"retail": 2, "researcher": 3, "pm": 2, "compliance": 3}
+
+
+def current_notice(answer: dict) -> dict:
+    """按已有合规意图更新展示提示，缓存及历史回答不再保留旧版提示。"""
+    if answer.get("kind") == "event" and "G" in answer.get("query", {}).get("intents", []):
+        return {**answer, "conclusion": {**answer["conclusion"], "prefix": COMPLIANCE_NOTICE}}
+    return answer
+
 PERSONA_STYLE = {
     "retail": "面向个人投资者：1–2 句，先给结论，避免术语，必要时解释。",
     "researcher": "面向研究员：2–3 句，写清来源、口径差异与时间。",
@@ -165,9 +176,7 @@ def generate(q: Query, ev: Event, rel: Relation, docs: list[Document], gaps: lis
     checks["banned_removed"] = hits
     prefix = ""
     if "G" in q.intents:
-        prefix = ("关于是否买入，建议你结合自身财务状况和风险承受能力，理性判断。"
-                  "EventLens 仅提供公开事实与证据链供你参考，不代你做买卖决定，也无法给出目标价或保证收益。"
-                  "下面先梳理相关事件的事实与来源。")
+        prefix = COMPLIANCE_NOTICE
         checks["compliance"] = "越界问题：拒绝建议部分，事实照常提供"
 
     # 数据截至时间：取抓取时间与查询时点中较早者（回看历史时点时，显示的是那个时点而不是重算时刻）

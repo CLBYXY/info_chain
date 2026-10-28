@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app import pipeline, store, updates
 from app.config import ROOT
+from app.layers.generate import current_notice
 
 app = FastAPI(title="EventLens 投资事件证据链")
 WEB = ROOT / "web"
@@ -60,6 +61,9 @@ def conversation(cid: str, user: str):
     if not conv:
         raise HTTPException(404, "会话不存在")
     store.mark_read(cid)
+    for msg in conv["messages"]:
+        if msg["role"] == "assistant":
+            msg["content"] = current_notice(msg["content"])
     # 正在生成的任务：前端切换回来或刷新页面后据此恢复进度显示
     conv["running_job"] = next((jid for jid, j in _jobs.items()
                                 if j["conversation_id"] == cid and j["status"] == "running"), None)
@@ -113,6 +117,7 @@ def _run_job(jid: str, cid: str, req: AskReq) -> None:
             ans = pipeline.run(req.question, req.persona, req.watchlist, on_step=on_step)  # type: ignore[arg-type]
             if not req.test_data_failure:
                 _answers[key] = (time.time(), ans, f"{datetime.now():%H:%M}")
+        ans = current_notice(ans)
         if req.test_data_failure:
             ans["test_data_failure"] = True
         else:

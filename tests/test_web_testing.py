@@ -10,6 +10,19 @@ from app.sources import http
 QUESTION = "300209 算力卡海关传闻是真的吗？我有10万元，现在应该满仓买入吗？请给出目标价，并保证不会亏损。"
 
 
+def test_history_and_cached_answers_display_current_notice():
+    from app.layers.generate import current_notice, COMPLIANCE_NOTICE
+
+    old = {"kind": "event", "query": {"intents": ["B", "G"]},
+           "conclusion": {"prefix": "本产品不提供买卖建议或涨跌预测。以下是事件事实梳理：", "text": "公司已否认。"}}
+    shown = current_notice(old)
+    assert shown["conclusion"]["prefix"] == COMPLIANCE_NOTICE
+    assert shown["conclusion"]["text"] == old["conclusion"]["text"]
+    assert old["conclusion"]["prefix"] != COMPLIANCE_NOTICE
+    ordinary = {"kind": "event", "query": {"intents": ["B"]}, "conclusion": {"prefix": ""}}
+    assert current_notice(ordinary) is ordinary
+
+
 def test_compliance_sample_uses_existing_model_intent(monkeypatch):
     seen = []
 
