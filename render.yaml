@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: eventlens-info-chain
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/meta
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: TZ
+        value: Asia/Shanghai
+      - key: HITHINK_FINANCE_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: EVENTLENS_LLM_PROVIDER
+        value: deepseek

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventLens 话题后台</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  body { overflow: auto; } main { max-width: 980px; margin: 0 auto; padding: 28px 20px; }
+  h1 { font: 600 24px var(--serif); margin: 0 0 4px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 16px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line2); font-size: 13px; vertical-align: middle; }
+  th { color: var(--sub); font-weight: 600; background: #fbf9f5; }
+  input[type=date] { border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; }
+  #log { margin-top: 16px; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>话题后台</h1>
+  <div class="muted small">库里记录了每个话题有哪些对话关注。刷新时重跑链路，有变化就给所有关注者写入更新、标红点。
+    “回退快照”只用于演示：把话题快照重算为某个历史时点（只用当时已披露的数据），再刷新即可看到真实增量。</div>
+  <div style="margin-top:14px"><button class="btn primary" id="all">刷新全部话题</button> <a class="link" href="/">‹ 返回对话</a></div>
+  <table><thead><tr><th>话题</th><th>关注对话</th><th>当前结论</th><th>节点</th><th>快照时点</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table>
+  <div id="log"></div>
+</main>
+<script>
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const post = (u, b) => fetch(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: b && JSON.stringify(b) }).then((r) => r.json());
+async function load() {
+  const list = await (await fetch("/api/admin/topics")).json();
+  document.getElementById("rows").innerHTML = list.map((t) => `<tr>
+    <td><b>${esc(t.title)}</b><div class="small muted">${esc(t.id)}</div></td><td>${t.followers}</td><td>${esc(t.status)}</td><td>${t.nodes}</td><td>${esc(t.as_of)}</td>
+    <td><input type="date" value="2026-08-20" id="d-${btoa(unescape(encodeURIComponent(t.id)))}"> <button class="btn" data-rw="${esc(t.id)}">回退快照</button>
+        <button class="btn" data-rf="${esc(t.id)}">刷新</button></td></tr>`).join("") || '<tr><td colspan="6" class="muted">还没有话题，先去对话页提一个问题</td></tr>';
+}
+function log(s) { document.getElementById("log").innerHTML = `<div class="aff">${s}</div>` + document.getElementById("log").innerHTML; }
+document.getElementById("rows").onclick = async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  b.disabled = true; b.textContent = "处理中…";
+  if (b.dataset.rw) {
+    const id = b.dataset.rw, d = document.getElementById("d-" + btoa(unescape(encodeURIComponent(id)))).value;
+    const r = await post("/api/admin/rewind", { topic_id: id, as_of: d });
+    log(`已回退「${esc(id)}」到 ${esc(r.as_of)}：${esc(r.status)}，${r.nodes} 个节点`);
+  } else {
+    const r = await post("/api/admin/refresh?topic_id=" + encodeURIComponent(b.dataset.rf));
+    r.forEach((x) => log(`刷新「${esc(x.topic_id)}」：${esc(x.headline)}${x.changed ? `，已通知 ${x.followers} 个对话` : ""}`));
+  }
+  load();
+};
+document.getElementById("all").onclick = async (e) => {
+  e.target.disabled = true; e.target.textContent = "刷新中…";
+  const r = await post("/api/admin/refresh");
+  r.forEach((x) => log(`刷新「${esc(x.topic_id)}」：${esc(x.headline)}${x.changed ? `，已通知 ${x.followers} 个对话` : ""}`));
+  e.target.disabled = false; e.target.textContent = "刷新全部话题"; load();
+};
+load();
+</script>
+</body>
+</html>

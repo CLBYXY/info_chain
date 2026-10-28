@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventLens 事件证据链</title>
+<link rel="stylesheet" href="/static/style.css?v=9">
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" id="side">
+    <div class="brand"><span class="mark">◆</span> EventLens <small>事件证据链</small></div>
+    <button class="new-chat" id="new-chat">＋ 新对话</button>
+    <nav id="conv-list" class="conv-list"></nav>
+    <div class="side-foot">
+      <label>我的身份
+        <select id="persona">
+          <option value="retail">个人投资者</option>
+          <option value="researcher">研究员</option>
+          <option value="pm">基金经理</option>
+          <option value="compliance">合规 / IR</option>
+        </select>
+      </label>
+      <label>自选股 <input id="watch" placeholder="如 300209,300857"></label>
+      <div class="tests" id="simulate" title="给问过的话题推送一条标注为“测试”的变化，用来体验红点、弹窗和新旧对比">
+        <span>🧪 测试推送</span>
+        <button data-kind="update">新证据</button><button data-kind="deny">否认</button>
+        <button data-kind="correct">更正</button><button data-kind="expire">过期</button>
+      </div>
+      <div id="llm" class="llm"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon only-mobile" id="toggle-side" aria-label="会话列表">☰</button>
+      <div id="conv-title" class="conv-title"></div>
+    </header>
+    <div id="thread" class="thread"></div>
+    <form id="composer" class="composer">
+      <textarea id="q" rows="1" placeholder="输入一条消息或问题，例如：网传行云科技的算力卡被卡在海关，是真的吗？"></textarea>
+      <button id="send" class="send" aria-label="发送">↑</button>
+    </form>
+    <div class="hint">只整理公开信息，不构成投资建议 · 你问过的话题有新进展时会提醒你</div>
+  </main>
+
+  <aside class="panel hidden" id="panel">
+    <button class="icon close" id="panel-close" aria-label="关闭">×</button>
+    <div id="panel-body"></div>
+  </aside>
+</div>
+
+<div id="modal" class="modal hidden"><div class="modal-box" id="modal-box"></div></div>
+<div id="toasts" class="toasts"></div>
+<script src="/static/app.js?v=9"></script>
+</body>
+</html>

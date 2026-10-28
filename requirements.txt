@@ -1,0 +1,6 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+httpx==0.28.1
+pydantic==2.14.1
+pypdf==5.1.0
+anthropic==2.3.0
