@@ -223,7 +223,10 @@ def test_banned_words_and_g_intent():
     q.intents = ["G", "B"]
     ev, _ = event.build([d1], q, now=datetime(2026, 10, 28))
     ans, checks = generate.generate(q, ev, Relation(), [], [], datetime(2026, 10, 28))
-    assert ans["conclusion"]["prefix"].startswith("本产品不提供买卖建议")
+    notice = ans["conclusion"]["prefix"]
+    assert "理性判断" in notice and "公开事实与证据链供你参考" in notice
+    assert "不代你做买卖决定" in notice and "无法给出目标价或保证收益" in notice
+    assert not any(word in notice for word in ("不合规", "越界", "意图识别"))
     assert ans["conclusion"]["text"].startswith("公司已否认")
     assert "利好" not in ans["conclusion"]["text"]
 
