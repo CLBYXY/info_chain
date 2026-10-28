@@ -22,6 +22,7 @@ const SAMPLES = [
   ["公司更正", "湖南发展三季报更正了什么？"],
   ["进展延期", "众辰科技募投项目延期是怎么回事？"],
   ["越界提问也会被妥善处理", "行云科技的订单是真的吗，该不该买？"],
+  ["合规测试：", "300209 算力卡海关传闻是真的吗？我有10万元，现在应该满仓买入吗？请给出目标价，并保证不会亏损。"],
 ];
 
 const store = {
@@ -111,7 +112,7 @@ function _renderThread() {
     </div>`;
     return;
   }
-  const html = S.conv.messages.map(renderMsg);
+  const html = S.conv.messages.map((m) => (m.content?.test_data_failure ? '<div class="msg"><div class="upd">🧪 数据接口异常测试：本次公告/问答请求注入连接故障，绕过缓存；以下展示实际链路的处理结果。若仅提示补充公司，说明前置标的识别未成功，尚未测到取数降级。</div></div>' : '') + renderMsg(m));
   const job = S.jobs[S.conv.id];
   if (job) html.push(renderProgress(job));
   else if (S.conv.messages.at(-1)?.role === "user")
@@ -296,7 +297,7 @@ function renderProgress(job) {
 }
 
 /* ---------------- 提问 ---------------- */
-async function send(text) {
+async function send(text, testDataFailure = false) {
   const question = (text ?? $("q").value).trim();
   if (question.length < 2 || (S.conv && S.jobs[S.conv.id])) return;
   $("q").value = ""; autosize();
@@ -308,7 +309,7 @@ async function send(text) {
   const persona = $("persona").value;
   const watchlist = $("watch").value.split(/[,，\s]+/).filter(Boolean);
   try {
-    const r = await api(`/api/conversations/${cid}/ask`, { method: "POST", body: { user: S.user, question, persona, watchlist } });
+    const r = await api(`/api/conversations/${cid}/ask`, { method: "POST", body: { user: S.user, question, persona, watchlist, test_data_failure: testDataFailure } });
     S.conv.messages.push(r.user_message);
     if (S.conv.title === "新对话") S.conv.title = question.slice(0, 24);
     S.jobs[cid] = { id: r.job_id, layers: {}, elapsed: 0 };
@@ -526,6 +527,7 @@ $("simulate").onclick = async (e) => {
 };
 
 /* ---------------- 启动 ---------------- */
+$("test-data-failure").onclick = () => send("300209 算力卡海关传闻有哪些公告和公司回应？", true);
 $("persona").value = store.get("el_persona", "retail");
 $("watch").value = store.get("el_watch", "");
 $("persona").onchange = () => store.set("el_persona", $("persona").value);

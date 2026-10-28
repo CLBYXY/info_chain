@@ -33,6 +33,7 @@ class AskReq(UserReq):
     question: str = Field(min_length=2, max_length=200)
     persona: str = "retail"
     watchlist: list[str] = Field(default_factory=list)
+    test_data_failure: bool = False
 
 
 @app.get("/api/meta")
@@ -95,6 +96,8 @@ def _register_topic(ans: dict, req: AskReq, cid: str) -> None:
 
 def _run_job(jid: str, cid: str, req: AskReq) -> None:
     job = _jobs[jid]
+    from app.sources.http import test_source_failure
+    token = test_source_failure.set(req.test_data_failure)
 
     def on_step(layer, state, summary):
         job["layers"][layer] = {"state": state, "summary": summary}
@@ -102,14 +105,18 @@ def _run_job(jid: str, cid: str, req: AskReq) -> None:
     try:
         key = (req.question.strip(), req.persona, tuple(req.watchlist))
         hit = _answers.get(key)
-        if hit and time.time() - hit[0] < 600:
+        if not req.test_data_failure and hit and time.time() - hit[0] < 600:
             ans = {**hit[1], "cached_at": hit[2]}
             for layer in LAYERS:
                 on_step(layer, "done", "复用 10 分钟内的结果")
         else:
             ans = pipeline.run(req.question, req.persona, req.watchlist, on_step=on_step)  # type: ignore[arg-type]
-            _answers[key] = (time.time(), ans, f"{datetime.now():%H:%M}")
-        _register_topic(ans, req, cid)
+            if not req.test_data_failure:
+                _answers[key] = (time.time(), ans, f"{datetime.now():%H:%M}")
+        if req.test_data_failure:
+            ans["test_data_failure"] = True
+        else:
+            _register_topic(ans, req, cid)
         msg = store.add_message(cid, "assistant", ans)
         conv = store.get_conversation(cid, req.user)
         if conv and conv["title"] in ("新对话", req.question[:24]) and ans.get("kind") == "event":
@@ -118,6 +125,8 @@ def _run_job(jid: str, cid: str, req: AskReq) -> None:
     except Exception as e:  # noqa: BLE001
         job.update(status="error", error=f"{type(e).__name__}: {e}")
         store.add_message(cid, "assistant", {"kind": "error", "text": "处理失败，请稍后重试。", "detail": str(e)[:300]})
+    finally:
+        test_source_failure.reset(token)
 
 
 @app.post("/api/conversations/{cid}/ask")
